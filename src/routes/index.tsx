@@ -1,36 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Trash2, Package, ShoppingCart, Boxes, History, Search } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type InventoryItem = { name: string; quantity: number; cost: number };
-type Sale = { name: string; quantity: number; price: number; profit: number; date: string };
-
-const STOCK_KEY = "inv_stock_v1";
-const SALES_KEY = "inv_sales_v1";
-
-function loadStock(): InventoryItem[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(STOCK_KEY) || "[]"); } catch { return []; }
-}
-function loadSales(): Sale[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(SALES_KEY) || "[]"); } catch { return []; }
-}
-
+type StockItem = { id: string; name: string; quantity: number; cost: number };
+type Sale = { id: string; name: string; quantity: number; price: number; profit: number; created_at: string };
 type Tab = "import" | "sell" | "stock" | "sales";
 
 function Index() {
   const [tab, setTab] = useState<Tab>("import");
-  const [stock, setStock] = useState<InventoryItem[]>([]);
+  const [stock, setStock] = useState<StockItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { setStock(loadStock()); setSales(loadSales()); }, []);
-  useEffect(() => { localStorage.setItem(STOCK_KEY, JSON.stringify(stock)); }, [stock]);
-  useEffect(() => { localStorage.setItem(SALES_KEY, JSON.stringify(sales)); }, [sales]);
+  const refresh = useCallback(async () => {
+    const [s, sa] = await Promise.all([
+      supabase.from("stock_items").select("*").order("name"),
+      supabase.from("sales").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (s.data) setStock(s.data as StockItem[]);
+    if (sa.data) setSales(sa.data as Sale[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   // Import form
   const [iName, setIName] = useState("");
@@ -44,59 +42,69 @@ function Index() {
   const [sPrice, setSPrice] = useState("");
   const [sMsg, setSMsg] = useState<string | null>(null);
 
-  const handleImport = (e: React.FormEvent) => {
+  const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = iName.trim();
     const qty = Number(iQty);
     const cost = Number(iCost);
-    if (!name || !qty || qty <= 0 || cost < 0) { setIMsg("Vui lòng nhập đầy đủ và hợp lệ"); return; }
-    setStock(prev => {
-      const idx = prev.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
-      if (idx >= 0) {
-        const cur = prev[idx];
-        const totalQty = cur.quantity + qty;
-        // Weighted average cost per unit
-        const avgCost = (cur.cost * cur.quantity + cost) / totalQty * totalQty / totalQty;
-        // Simpler: store cost as total cost, but spec says vốn. Treat cost as unit cost weighted avg.
-        const newUnit = (cur.cost * cur.quantity + cost * qty) / totalQty;
-        const next = [...prev];
-        next[idx] = { name: cur.name, quantity: totalQty, cost: newUnit };
-        void avgCost;
-        return next;
-      }
-      return [...prev, { name, quantity: qty, cost }];
-    });
+    if (!name || !qty || qty <= 0 || cost < 0) { setIMsg("⚠️ Vui lòng nhập đầy đủ và hợp lệ"); return; }
+
+    const existing = stock.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      const totalQty = Number(existing.quantity) + qty;
+      const newUnit = (Number(existing.cost) * Number(existing.quantity) + cost * qty) / totalQty;
+      const { error } = await supabase.from("stock_items")
+        .update({ quantity: totalQty, cost: newUnit, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      if (error) { setIMsg("Lỗi: " + error.message); return; }
+    } else {
+      const { error } = await supabase.from("stock_items").insert({ name, quantity: qty, cost });
+      if (error) { setIMsg("Lỗi: " + error.message); return; }
+    }
     setIName(""); setIQty(""); setICost("");
-    setIMsg(`Đã nhập ${qty} ${name}`);
+    setIMsg(`✅ Đã nhập ${qty} ${name}`);
+    refresh();
   };
 
-  const handleSell = (e: React.FormEvent) => {
+  const handleSell = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = sName.trim();
     const qty = Number(sQty);
     const price = Number(sPrice);
-    if (!name || !qty || qty <= 0 || price < 0) { setSMsg("Vui lòng nhập đầy đủ và hợp lệ"); return; }
-    const idx = stock.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
-    if (idx < 0 || stock[idx].quantity < qty) {
-      setSMsg("Không có loại hàng đang tìm hoặc không đủ số lượng");
+    if (!name || !qty || qty <= 0 || price < 0) { setSMsg("⚠️ Vui lòng nhập đầy đủ và hợp lệ"); return; }
+
+    const item = stock.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (!item || Number(item.quantity) < qty) {
+      setSMsg("❌ Không có loại hàng đang tìm hoặc không đủ số lượng");
       return;
     }
-    const item = stock[idx];
-    const profit = (price - item.cost) * qty;
-    setStock(prev => {
-      const next = [...prev];
-      const cur = next[idx];
-      const remain = cur.quantity - qty;
-      if (remain === 0) next.splice(idx, 1);
-      else next[idx] = { ...cur, quantity: remain };
-      return next;
-    });
-    setSales(prev => [
-      { name: item.name, quantity: qty, price, profit, date: new Date().toISOString() },
-      ...prev,
-    ]);
+    const profit = (price - Number(item.cost)) * qty;
+    const remain = Number(item.quantity) - qty;
+
+    if (remain === 0) {
+      await supabase.from("stock_items").delete().eq("id", item.id);
+    } else {
+      await supabase.from("stock_items")
+        .update({ quantity: remain, updated_at: new Date().toISOString() })
+        .eq("id", item.id);
+    }
+    const { error } = await supabase.from("sales").insert({ name: item.name, quantity: qty, price, profit });
+    if (error) { setSMsg("Lỗi: " + error.message); return; }
+
     setSName(""); setSQty(""); setSPrice("");
-    setSMsg(`Đã bán ${qty} ${item.name} — Lãi: ${formatVND(profit)}`);
+    setSMsg(`✅ Đã bán ${qty} ${item.name} — Lãi: ${formatVND(profit)}`);
+    refresh();
+  };
+
+  const deleteSale = async (id: string) => {
+    await supabase.from("sales").delete().eq("id", id);
+    refresh();
+  };
+
+  const clearAllSales = async () => {
+    if (!confirm("Xoá toàn bộ lịch sử bán hàng?")) return;
+    await supabase.from("sales").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    refresh();
   };
 
   const filteredStock = useMemo(
@@ -104,172 +112,244 @@ function Index() {
     [stock, search]
   );
 
-  const totalProfit = useMemo(() => sales.reduce((s, x) => s + x.profit, 0), [sales]);
+  const totalProfit = useMemo(() => sales.reduce((s, x) => s + Number(x.profit), 0), [sales]);
+  const totalStockValue = useMemo(
+    () => stock.reduce((s, x) => s + Number(x.cost) * Number(x.quantity), 0),
+    [stock]
+  );
+
+  const tabs: [Tab, string, React.ReactNode][] = [
+    ["import", "Nhập hàng", <Package className="w-4 h-4" />],
+    ["sell", "Bán hàng", <ShoppingCart className="w-4 h-4" />],
+    ["stock", "Hàng còn lại", <Boxes className="w-4 h-4" />],
+    ["sales", "Lịch sử bán", <History className="w-4 h-4" />],
+  ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-4xl mx-auto p-6">
-        <header className="mb-6">
-          <h1 className="text-3xl font-bold">Quản lý hàng hoá</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+    <div className="min-h-screen text-foreground">
+      <div className="rainbow-bar h-1.5 w-full" />
+
+      <div className="max-w-5xl mx-auto p-4 sm:p-6">
+        <header className="mb-8 pt-4">
+          <h1 className="text-4xl sm:text-5xl font-bold rainbow-text tracking-tight">
+            Quản lý hàng hoá
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
             Nhập – Bán – Theo dõi tồn kho và lãi
           </p>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <StatCard label="Tổng vốn tồn" value={formatVND(totalStockValue)} accent="cyan" />
+            <StatCard label="Tổng lãi" value={formatVND(totalProfit)} accent={totalProfit >= 0 ? "green" : "pink"} />
+            <StatCard label="Số loại hàng" value={String(stock.length)} accent="purple" />
+          </div>
         </header>
 
-        <nav className="flex flex-wrap gap-2 mb-6 border-b border-border">
-          {([
-            ["import", "Nhập hàng"],
-            ["sell", "Bán hàng"],
-            ["stock", "Hàng còn lại"],
-            ["sales", "Lịch sử bán"],
-          ] as [Tab, string][]).map(([k, label]) => (
+        <nav className="flex flex-wrap gap-1 mb-6 p-1 rounded-xl bg-card/60 border border-border backdrop-blur">
+          {tabs.map(([k, label, icon]) => (
             <button
               key={k}
               onClick={() => setTab(k)}
-              className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === k
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-gradient-to-r from-[var(--neon-pink)] via-[var(--neon-purple)] to-[var(--neon-cyan)] text-white shadow-lg"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
+              {icon}
               {label}
             </button>
           ))}
         </nav>
 
-        {tab === "import" && (
-          <section className="rounded-lg border border-border bg-card p-6">
-            <h2 className="text-lg font-semibold mb-4">Nhập hàng</h2>
-            <form onSubmit={handleImport} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Tên hàng">
-                <Input value={iName} onChange={setIName} placeholder="VD: Nước ngọt" />
-              </Field>
-              <Field label="Số lượng">
-                <Input value={iQty} onChange={setIQty} type="number" placeholder="0" />
-              </Field>
-              <Field label="Số tiền vốn / đơn vị">
-                <Input value={iCost} onChange={setICost} type="number" placeholder="0" />
-              </Field>
-              <div className="sm:col-span-2 flex items-center gap-3">
-                <button className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
-                  Lưu nhập hàng
-                </button>
-                {iMsg && <span className="text-sm text-muted-foreground">{iMsg}</span>}
-              </div>
-            </form>
-          </section>
-        )}
-
-        {tab === "sell" && (
-          <section className="rounded-lg border border-border bg-card p-6">
-            <h2 className="text-lg font-semibold mb-4">Bán hàng</h2>
-            <form onSubmit={handleSell} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Tên hàng">
-                <Input value={sName} onChange={setSName} placeholder="Nhập tên hàng" list="stock-names" />
-                <datalist id="stock-names">
-                  {stock.map(s => <option key={s.name} value={s.name} />)}
-                </datalist>
-              </Field>
-              <Field label="Số lượng">
-                <Input value={sQty} onChange={setSQty} type="number" placeholder="0" />
-              </Field>
-              <Field label="Giá bán / đơn vị">
-                <Input value={sPrice} onChange={setSPrice} type="number" placeholder="0" />
-              </Field>
-              <div className="sm:col-span-2 flex items-center gap-3">
-                <button className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90">
-                  Ghi nhận bán
-                </button>
-                {sMsg && <span className="text-sm text-muted-foreground">{sMsg}</span>}
-              </div>
-            </form>
-          </section>
-        )}
-
-        {tab === "stock" && (
-          <section className="rounded-lg border border-border bg-card p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-semibold">Hàng còn lại</h2>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Tìm kiếm hàng..."
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm w-full sm:w-64"
-              />
-            </div>
-            {filteredStock.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Không có hàng nào.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left border-b border-border text-muted-foreground">
-                      <th className="py-2 pr-4">Tên hàng</th>
-                      <th className="py-2 pr-4">Số lượng</th>
-                      <th className="py-2 pr-4">Vốn / đv</th>
-                      <th className="py-2">Tổng vốn</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStock.map(item => (
-                      <tr key={item.name} className="border-b border-border/50">
-                        <td className="py-2 pr-4 font-medium">{item.name}</td>
-                        <td className="py-2 pr-4">{item.quantity}</td>
-                        <td className="py-2 pr-4">{formatVND(item.cost)}</td>
-                        <td className="py-2">{formatVND(item.cost * item.quantity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Đang tải...</p>
+        ) : (
+          <>
+            {tab === "import" && (
+              <Card title="Nhập hàng" accent="cyan">
+                <form onSubmit={handleImport} className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Tên hàng">
+                    <Input value={iName} onChange={setIName} placeholder="VD: Nước ngọt" />
+                  </Field>
+                  <Field label="Số lượng">
+                    <Input value={iQty} onChange={setIQty} type="number" placeholder="0" />
+                  </Field>
+                  <Field label="Số tiền vốn / đơn vị">
+                    <Input value={iCost} onChange={setICost} type="number" placeholder="0" />
+                  </Field>
+                  <div className="sm:col-span-2 flex items-center gap-3">
+                    <button className="rounded-lg bg-gradient-to-r from-[var(--neon-cyan)] to-[var(--neon-green)] text-black font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
+                      Lưu nhập hàng
+                    </button>
+                    {iMsg && <span className="text-sm text-muted-foreground">{iMsg}</span>}
+                  </div>
+                </form>
+              </Card>
             )}
-          </section>
-        )}
 
-        {tab === "sales" && (
-          <section className="rounded-lg border border-border bg-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Lịch sử bán hàng</h2>
-              <span className="text-sm">
-                Tổng lãi:{" "}
-                <span className={totalProfit >= 0 ? "text-green-600 font-semibold" : "text-destructive font-semibold"}>
-                  {formatVND(totalProfit)}
-                </span>
-              </span>
-            </div>
-            {sales.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có giao dịch.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left border-b border-border text-muted-foreground">
-                      <th className="py-2 pr-4">Ngày</th>
-                      <th className="py-2 pr-4">Tên hàng</th>
-                      <th className="py-2 pr-4">SL</th>
-                      <th className="py-2 pr-4">Giá bán</th>
-                      <th className="py-2">Lãi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sales.map((s, i) => (
-                      <tr key={i} className="border-b border-border/50">
-                        <td className="py-2 pr-4">{new Date(s.date).toLocaleString("vi-VN")}</td>
-                        <td className="py-2 pr-4 font-medium">{s.name}</td>
-                        <td className="py-2 pr-4">{s.quantity}</td>
-                        <td className="py-2 pr-4">{formatVND(s.price)}</td>
-                        <td className={`py-2 ${s.profit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                          {formatVND(s.profit)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {tab === "sell" && (
+              <Card title="Bán hàng" accent="pink">
+                <form onSubmit={handleSell} className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Tên hàng">
+                    <Input value={sName} onChange={setSName} placeholder="Nhập tên hàng" list="stock-names" />
+                    <datalist id="stock-names">
+                      {stock.map(s => <option key={s.id} value={s.name} />)}
+                    </datalist>
+                  </Field>
+                  <Field label="Số lượng">
+                    <Input value={sQty} onChange={setSQty} type="number" placeholder="0" />
+                  </Field>
+                  <Field label="Giá bán / đơn vị">
+                    <Input value={sPrice} onChange={setSPrice} type="number" placeholder="0" />
+                  </Field>
+                  <div className="sm:col-span-2 flex items-center gap-3">
+                    <button className="rounded-lg bg-gradient-to-r from-[var(--neon-pink)] to-[var(--neon-purple)] text-white font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
+                      Ghi nhận bán
+                    </button>
+                    {sMsg && <span className="text-sm text-muted-foreground">{sMsg}</span>}
+                  </div>
+                </form>
+              </Card>
             )}
-          </section>
+
+            {tab === "stock" && (
+              <Card title="Hàng còn lại" accent="purple">
+                <div className="relative mb-4">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Tìm kiếm hàng..."
+                    className="w-full rounded-lg border border-input bg-input pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                {filteredStock.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Không có hàng nào.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b border-border text-muted-foreground">
+                          <th className="py-2 pr-4">Tên hàng</th>
+                          <th className="py-2 pr-4">Số lượng</th>
+                          <th className="py-2 pr-4">Vốn / đv</th>
+                          <th className="py-2">Tổng vốn</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStock.map(item => (
+                          <tr key={item.id} className="border-b border-border/40 hover:bg-accent/30">
+                            <td className="py-2.5 pr-4 font-medium">{item.name}</td>
+                            <td className="py-2.5 pr-4">{Number(item.quantity)}</td>
+                            <td className="py-2.5 pr-4">{formatVND(Number(item.cost))}</td>
+                            <td className="py-2.5 text-[var(--neon-cyan)]">{formatVND(Number(item.cost) * Number(item.quantity))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {tab === "sales" && (
+              <Card title="Lịch sử bán hàng" accent="green">
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <span className="text-sm">
+                    Tổng lãi:{" "}
+                    <span className={totalProfit >= 0 ? "text-[var(--neon-green)] font-bold" : "text-destructive font-bold"}>
+                      {formatVND(totalProfit)}
+                    </span>
+                  </span>
+                  {sales.length > 0 && (
+                    <button
+                      onClick={clearAllSales}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/50 text-destructive px-3 py-1.5 text-xs font-medium hover:bg-destructive hover:text-destructive-foreground transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Xoá toàn bộ
+                    </button>
+                  )}
+                </div>
+                {sales.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Chưa có giao dịch.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b border-border text-muted-foreground">
+                          <th className="py-2 pr-4">Ngày</th>
+                          <th className="py-2 pr-4">Tên hàng</th>
+                          <th className="py-2 pr-4">SL</th>
+                          <th className="py-2 pr-4">Giá bán</th>
+                          <th className="py-2 pr-4">Lãi</th>
+                          <th className="py-2 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sales.map(s => (
+                          <tr key={s.id} className="border-b border-border/40 hover:bg-accent/30">
+                            <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                              {new Date(s.created_at).toLocaleString("vi-VN")}
+                            </td>
+                            <td className="py-2.5 pr-4 font-medium">{s.name}</td>
+                            <td className="py-2.5 pr-4">{Number(s.quantity)}</td>
+                            <td className="py-2.5 pr-4">{formatVND(Number(s.price))}</td>
+                            <td className={`py-2.5 pr-4 font-semibold ${Number(s.profit) >= 0 ? "text-[var(--neon-green)]" : "text-destructive"}`}>
+                              {formatVND(Number(s.profit))}
+                            </td>
+                            <td className="py-2.5">
+                              <button
+                                onClick={() => deleteSale(s.id)}
+                                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                                aria-label="Xoá"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            )}
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+function Card({ title, accent, children }: { title: string; accent: "cyan" | "pink" | "purple" | "green"; children: React.ReactNode }) {
+  const barColor = {
+    cyan: "from-[var(--neon-cyan)] to-[var(--neon-green)]",
+    pink: "from-[var(--neon-pink)] to-[var(--neon-purple)]",
+    purple: "from-[var(--neon-purple)] to-[var(--neon-cyan)]",
+    green: "from-[var(--neon-green)] to-[var(--neon-yellow)]",
+  }[accent];
+  return (
+    <section className="rounded-xl border border-border bg-card/70 backdrop-blur overflow-hidden">
+      <div className={`h-1 w-full bg-gradient-to-r ${barColor}`} />
+      <div className="p-5 sm:p-6">
+        <h2 className="text-lg font-semibold mb-4">{title}</h2>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function StatCard({ label, value, accent }: { label: string; value: string; accent: "cyan" | "pink" | "purple" | "green" }) {
+  const color = {
+    cyan: "text-[var(--neon-cyan)]",
+    pink: "text-[var(--neon-pink)]",
+    purple: "text-[var(--neon-purple)]",
+    green: "text-[var(--neon-green)]",
+  }[accent];
+  return (
+    <div className="rounded-xl border border-border bg-card/60 backdrop-blur p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-lg font-bold mt-0.5 ${color}`}>{value}</div>
     </div>
   );
 }
@@ -277,7 +357,7 @@ function Index() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium mb-1">{label}</span>
+      <span className="block text-sm font-medium mb-1.5">{label}</span>
       {children}
     </label>
   );
@@ -295,7 +375,7 @@ function Input({
       type={type}
       placeholder={placeholder}
       list={list}
-      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      className="w-full rounded-lg border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
     />
   );
 }
