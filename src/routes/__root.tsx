@@ -80,9 +80,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Quản lý hàng hoá" },
       { name: "description", content: "Phần mềm quản lý nhập – bán – tồn kho và tính lãi" },
       { property: "og:title", content: "Quản lý hàng hoá" },
-      { property: "og:description", content: "Nhập hàng, bán hàng, theo dõi tồn kho và lãi" },
+      { property: "og:description", content: "Phần mềm quản lý nhập – bán – tồn kho và tính lãi" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Quản lý hàng hoá" },
+      { name: "twitter:description", content: "Phần mềm quản lý nhập – bán – tồn kho và tính lãi" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e5e86956-c081-4257-b070-a17f396797cf/id-preview-54df82b1--ce301670-0743-434d-915f-3a496551dbc7.lovable.app-1783404571950.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e5e86956-c081-4257-b070-a17f396797cf/id-preview-54df82b1--ce301670-0743-434d-915f-3a496551dbc7.lovable.app-1783404571950.png" },
     ],
     links: [
       {
