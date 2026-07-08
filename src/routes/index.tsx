@@ -480,3 +480,8 @@ function Input({
 function formatVND(n: number) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n);
 }
+
+// Bỏ hậu tố " (giá)" để so khớp tên gốc
+function baseName(name: string) {
+  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
