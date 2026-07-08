@@ -1,11 +1,72 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Package, ShoppingCart, Boxes, History, Search } from "lucide-react";
+import { Trash2, Package, ShoppingCart, Boxes, History, Search, Lock, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: Gate,
 });
+
+const AUTH_USER = "Vũ";
+const AUTH_PASS = "Leewuu0962267267";
+const AUTH_KEY = "inv_auth_v1";
+
+function Gate() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setAuthed(typeof window !== "undefined" && localStorage.getItem(AUTH_KEY) === "1");
+  }, []);
+
+  if (authed === null) return null;
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  return <Index onLogout={() => { localStorage.removeItem(AUTH_KEY); setAuthed(false); }} />;
+}
+
+function Login({ onSuccess }: { onSuccess: () => void }) {
+  const [u, setU] = useState("");
+  const [p, setP] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (u.trim() === AUTH_USER && p === AUTH_PASS) {
+      localStorage.setItem(AUTH_KEY, "1");
+      onSuccess();
+    } else {
+      setErr("❌ Sai tên đăng nhập hoặc mật khẩu");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="rainbow-bar h-1.5 w-full absolute top-0 left-0" />
+      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-border bg-card/70 backdrop-blur p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-[var(--neon-pink)] to-[var(--neon-purple)]">
+            <Lock className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold rainbow-text">Đăng nhập</h1>
+            <p className="text-xs text-muted-foreground">Quản lý hàng hoá</p>
+          </div>
+        </div>
+        <label className="block">
+          <span className="block text-sm font-medium mb-1.5">Tên đăng nhập</span>
+          <input value={u} onChange={e => setU(e.target.value)} className="w-full rounded-lg border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-medium mb-1.5">Mật khẩu</span>
+          <input type="password" value={p} onChange={e => setP(e.target.value)} className="w-full rounded-lg border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        </label>
+        {err && <p className="text-sm text-destructive">{err}</p>}
+        <button className="w-full rounded-lg bg-gradient-to-r from-[var(--neon-pink)] via-[var(--neon-purple)] to-[var(--neon-cyan)] text-white font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
+          Đăng nhập
+        </button>
+      </form>
+    </div>
+  );
+}
 
 type StockItem = { id: string; name: string; quantity: number; cost: number };
 type Sale = { id: string; name: string; quantity: number; price: number; profit: number; created_at: string };
