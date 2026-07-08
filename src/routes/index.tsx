@@ -168,6 +168,12 @@ function Index({ onLogout }: { onLogout: () => void }) {
     refresh();
   };
 
+  const deleteStock = async (id: string, name: string) => {
+    if (!confirm(`Xoá "${name}" khỏi kho?`)) return;
+    await supabase.from("stock_items").delete().eq("id", id);
+    refresh();
+  };
+
   const filteredStock = useMemo(
     () => stock.filter(x => x.name.toLowerCase().includes(search.toLowerCase())),
     [stock, search]
@@ -304,7 +310,8 @@ function Index({ onLogout }: { onLogout: () => void }) {
                           <th className="py-2 pr-4">Tên hàng</th>
                           <th className="py-2 pr-4">Số lượng</th>
                           <th className="py-2 pr-4">Vốn / đv</th>
-                          <th className="py-2">Tổng vốn</th>
+                          <th className="py-2 pr-4">Tổng vốn</th>
+                          <th className="py-2 w-10"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -313,7 +320,16 @@ function Index({ onLogout }: { onLogout: () => void }) {
                             <td className="py-2.5 pr-4 font-medium">{item.name}</td>
                             <td className="py-2.5 pr-4">{Number(item.quantity)}</td>
                             <td className="py-2.5 pr-4">{formatVND(Number(item.cost))}</td>
-                            <td className="py-2.5 text-[var(--neon-cyan)]">{formatVND(Number(item.cost) * Number(item.quantity))}</td>
+                            <td className="py-2.5 pr-4 text-[var(--neon-cyan)]">{formatVND(Number(item.cost) * Number(item.quantity))}</td>
+                            <td className="py-2.5">
+                              <button
+                                onClick={() => deleteStock(item.id, item.name)}
+                                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                                aria-label="Xoá"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
