@@ -72,7 +72,7 @@ type StockItem = { id: string; name: string; quantity: number; cost: number };
 type Sale = { id: string; name: string; quantity: number; price: number; profit: number; created_at: string };
 type Tab = "import" | "sell" | "stock" | "sales";
 
-function Index() {
+function Index({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("import");
   const [stock, setStock] = useState<StockItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
