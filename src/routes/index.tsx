@@ -168,6 +168,12 @@ function Index({ onLogout }: { onLogout: () => void }) {
     refresh();
   };
 
+  const deleteStock = async (id: string, name: string) => {
+    if (!confirm(`Xoá "${name}" khỏi kho?`)) return;
+    await supabase.from("stock_items").delete().eq("id", id);
+    refresh();
+  };
+
   const filteredStock = useMemo(
     () => stock.filter(x => x.name.toLowerCase().includes(search.toLowerCase())),
     [stock, search]
