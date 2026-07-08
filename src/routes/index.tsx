@@ -110,22 +110,32 @@ function Index({ onLogout }: { onLogout: () => void }) {
     const cost = Number(iCost);
     if (!name || !qty || qty <= 0 || cost < 0) { setIMsg("⚠️ Vui lòng nhập đầy đủ và hợp lệ"); return; }
 
-    const existing = stock.find(x => x.name.toLowerCase() === name.toLowerCase());
-    if (existing) {
-      const totalQty = Number(existing.quantity) + qty;
-      const newUnit = (Number(existing.cost) * Number(existing.quantity) + cost * qty) / totalQty;
+    // Cùng tên VÀ cùng giá vốn -> cộng dồn. Khác giá -> tạo mục mới "Tên (giá)"
+    const sameNameItems = stock.filter(x => baseName(x.name).toLowerCase() === name.toLowerCase());
+    const sameNameSameCost = sameNameItems.find(x => Number(x.cost) === cost);
+    let finalName = name;
+
+    if (sameNameSameCost) {
+      const totalQty = Number(sameNameSameCost.quantity) + qty;
       const { error } = await supabase.from("stock_items")
-        .update({ quantity: totalQty, cost: newUnit, updated_at: new Date().toISOString() })
-        .eq("id", existing.id);
+        .update({ quantity: totalQty, updated_at: new Date().toISOString() })
+        .eq("id", sameNameSameCost.id);
       if (error) { setIMsg("Lỗi: " + error.message); return; }
+      finalName = sameNameSameCost.name;
     } else {
-      const { error } = await supabase.from("stock_items").insert({ name, quantity: qty, cost });
+      // Nếu đã tồn tại mục cùng tên khác giá -> gắn hậu tố (giá)
+      if (sameNameItems.length > 0) {
+        finalName = `${name} (${formatVND(cost)})`;
+      }
+      const { error } = await supabase.from("stock_items").insert({ name: finalName, quantity: qty, cost });
       if (error) { setIMsg("Lỗi: " + error.message); return; }
     }
     setIName(""); setIQty(""); setICost("");
-    setIMsg(`✅ Đã nhập ${qty} ${name}`);
+    setIMsg(`✅ Đã nhập ${qty} ${finalName}`);
     refresh();
   };
+
+
 
   const handleSell = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -469,4 +479,9 @@ function Input({
 
 function formatVND(n: number) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n);
+}
+
+// Bỏ hậu tố " (giá)" để so khớp tên gốc
+function baseName(name: string) {
+  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
 }
