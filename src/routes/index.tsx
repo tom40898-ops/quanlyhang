@@ -192,12 +192,22 @@ function Index({ onLogout }: { onLogout: () => void }) {
 
       <div className="max-w-5xl mx-auto p-4 sm:p-6">
         <header className="mb-8 pt-4">
-          <h1 className="text-4xl sm:text-5xl font-bold rainbow-text tracking-tight">
-            Quản lý hàng hoá
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Nhập – Bán – Theo dõi tồn kho và lãi
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-bold rainbow-text tracking-tight">
+                Quản lý hàng hoá
+              </h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                Nhập – Bán – Theo dõi tồn kho và lãi
+              </p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Đăng xuất
+            </button>
+          </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
             <StatCard label="Tổng vốn tồn" value={formatVND(totalStockValue)} accent="cyan" />
             <StatCard label="Tổng lãi" value={formatVND(totalProfit)} accent={totalProfit >= 0 ? "green" : "pink"} />
