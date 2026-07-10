@@ -14,59 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
-      sales: {
+      capital_entries: {
         Row: {
-          created_at: string
+          amount: number
+          created_at: string | null
           id: string
-          name: string
-          price: number
-          profit: number
-          quantity: number
+          item_name: string | null
+          item_quantity: number | null
+          item_unit_price: number | null
+          note: string
+          sold: boolean
         }
         Insert: {
-          created_at?: string
+          amount: number
+          created_at?: string | null
           id?: string
-          name: string
-          price: number
-          profit: number
-          quantity: number
+          item_name?: string | null
+          item_quantity?: number | null
+          item_unit_price?: number | null
+          note: string
+          sold?: boolean
         }
         Update: {
-          created_at?: string
+          amount?: number
+          created_at?: string | null
           id?: string
-          name?: string
-          price?: number
-          profit?: number
-          quantity?: number
+          item_name?: string | null
+          item_quantity?: number | null
+          item_unit_price?: number | null
+          note?: string
+          sold?: boolean
         }
         Relationships: []
       }
-      stock_items: {
+      selling_entries: {
         Row: {
-          cost: number
-          created_at: string
+          amount: number
+          capital_entry_id: string | null
+          created_at: string | null
           id: string
-          name: string
+          note: string
           quantity: number
-          updated_at: string
+          unit_price: number | null
         }
         Insert: {
-          cost?: number
-          created_at?: string
+          amount: number
+          capital_entry_id?: string | null
+          created_at?: string | null
           id?: string
-          name: string
+          note: string
           quantity?: number
-          updated_at?: string
+          unit_price?: number | null
         }
         Update: {
-          cost?: number
-          created_at?: string
+          amount?: number
+          capital_entry_id?: string | null
+          created_at?: string | null
           id?: string
-          name?: string
+          note?: string
           quantity?: number
-          updated_at?: string
+          unit_price?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "selling_entries_capital_entry_id_fkey"
+            columns: ["capital_entry_id"]
+            isOneToOne: false
+            referencedRelation: "capital_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
