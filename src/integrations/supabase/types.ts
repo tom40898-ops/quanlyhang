@@ -47,6 +47,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price: number
+          profit: number
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price: number
+          profit: number
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          profit?: number
+          quantity?: number
+        }
+        Relationships: []
+      }
       selling_entries: {
         Row: {
           amount: number
@@ -84,6 +111,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stock_items: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          name: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          name: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          name?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
