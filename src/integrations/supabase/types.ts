@@ -52,6 +52,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          owner: string
           price: number
           profit: number
           quantity: number
@@ -60,6 +61,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          owner?: string
           price: number
           profit: number
           quantity: number
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          owner?: string
           price?: number
           profit?: number
           quantity?: number
@@ -112,12 +115,37 @@ export type Database = {
           },
         ]
       }
+      service_items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          quantity: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          quantity?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          quantity?: number
+          status?: string
+        }
+        Relationships: []
+      }
       stock_items: {
         Row: {
           cost: number
           created_at: string
           id: string
           name: string
+          owner: string
           quantity: number
           updated_at: string
         }
@@ -126,6 +154,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          owner?: string
           quantity?: number
           updated_at?: string
         }
@@ -134,6 +163,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          owner?: string
           quantity?: number
           updated_at?: string
         }
