@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Trash2, Package, ShoppingCart, Boxes, History, Search, Lock, LogOut,
-  User, Wrench, Truck, Clock, Settings as SettingsIcon, Eye, Phone,
+  User, Wrench, Truck, Clock, Settings as SettingsIcon, Phone,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -176,9 +176,9 @@ type Tab = "import" | "sell" | "stock" | "vu" | "receive" | "deliver" | "pending
 
 const sb = supabase as any;
 
-function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => void }) {
+function Index({ onLogout }: { onLogout: () => void }) {
   const { lang, setLang, t } = useLang();
-  const readOnly = role === "guest";
+  const readOnly = false;
   const [tab, setTab] = useState<Tab>("import");
   const [stock, setStock] = useState<StockItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -365,11 +365,6 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
             <div>
               <h1 className="text-4xl sm:text-5xl font-bold rainbow-text tracking-tight">{t("appTitle")}</h1>
               <p className="text-sm text-muted-foreground mt-2">{t("appSub")}</p>
-              {readOnly && (
-                <span className="inline-flex items-center gap-1.5 mt-3 rounded-md px-2 py-1 text-xs font-medium bg-[var(--neon-yellow)]/20 text-[var(--neon-yellow)] border border-[var(--neon-yellow)]/40">
-                  <Eye className="w-3.5 h-3.5" /> {t("guestBadge")}
-                </span>
-              )}
             </div>
             <button
               onClick={onLogout}
