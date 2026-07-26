@@ -294,9 +294,9 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
     const name = rName.trim();
     const qty = Number(rQty);
     if (!name || !qty || qty <= 0) { setRMsg(t("fillAll")); return; }
-    const { error } = await sb.from("service_items").insert({ name, quantity: qty, status: "pending" });
+    const { error } = await sb.from("service_items").insert({ name, quantity: qty, status: "pending", note: rNote.trim() });
     if (error) { setRMsg("Lỗi: " + error.message); return; }
-    setRName(""); setRQty("1");
+    setRName(""); setRQty("1"); setRNote("");
     setRMsg(`✅ ${name} × ${qty}`);
     refresh();
   };
