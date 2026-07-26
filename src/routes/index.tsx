@@ -180,7 +180,7 @@ function Login({ phone, onOwner, onGuest }: { phone: string; onOwner: () => void
 type Owner = "shop" | "vu" | "service";
 type StockItem = { id: string; name: string; quantity: number; cost: number; owner: Owner };
 type Sale = { id: string; name: string; quantity: number; price: number; profit: number; created_at: string; owner: Owner };
-type ServiceItem = { id: string; name: string; quantity: number; status: string; created_at: string };
+type ServiceItem = { id: string; name: string; quantity: number; status: string; note: string; created_at: string };
 type Tab = "import" | "sell" | "stock" | "vu" | "receive" | "deliver" | "pending" | "sales" | "settings";
 
 const sb = supabase as any;
