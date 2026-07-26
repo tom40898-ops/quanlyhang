@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Trash2, Package, ShoppingCart, Boxes, History, Search, Lock, LogOut,
-  User, Wrench, Truck, Clock, Settings as SettingsIcon, Eye, Phone,
+  User, Wrench, Truck, Clock, Settings as SettingsIcon, Phone,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Gate,
 });
 
-const AUTH_KEY = "inv_auth_v1"; // "1" = owner, "guest" = guest
+const AUTH_KEY = "inv_auth_v1"; // "1" = owner
 const CRED_KEY = "inv_cred_v1";
 const THEME_KEY = "inv_theme_v1";
 const LANG_KEY = "inv_lang_v1";
@@ -30,8 +30,6 @@ const DICT: Record<string, { vi: string; en: string }> = {
   user: { vi: "Tên đăng nhập", en: "Username" },
   password: { vi: "Mật khẩu", en: "Password" },
   wrong: { vi: "❌ Sai tên đăng nhập hoặc mật khẩu", en: "❌ Wrong username or password" },
-  guest: { vi: "Vào với chế độ khách (chỉ xem)", en: "Continue as guest (view only)" },
-  guestBadge: { vi: "Chế độ khách • chỉ xem", en: "Guest mode • view only" },
   logout: { vi: "Đăng xuất", en: "Sign out" },
   contact: { vi: "Liên hệ", en: "Contact" },
   tabImport: { vi: "Nhập hàng", en: "Import" },
@@ -90,20 +88,20 @@ function applyTheme(theme: Theme) {
 }
 
 function Gate() {
-  const [authed, setAuthed] = useState<"owner" | "guest" | null | undefined>(undefined);
+  const [authed, setAuthed] = useState<boolean | undefined>(undefined);
   const [phone, setPhone] = useState(DEFAULT_PHONE);
 
   useEffect(() => {
     const v = localStorage.getItem(AUTH_KEY);
-    setAuthed(v === "1" ? "owner" : v === "guest" ? "guest" : null);
+    setAuthed(v === "1");
     const theme = (localStorage.getItem(THEME_KEY) as Theme | null) || "neon";
     applyTheme(theme);
     setPhone(localStorage.getItem(PHONE_KEY) || DEFAULT_PHONE);
   }, []);
 
   if (authed === undefined) return null;
-  if (!authed) return <Login phone={phone} onOwner={() => { localStorage.setItem(AUTH_KEY, "1"); setAuthed("owner"); }} onGuest={() => { localStorage.setItem(AUTH_KEY, "guest"); setAuthed("guest"); }} />;
-  return <Index role={authed} onLogout={() => { localStorage.removeItem(AUTH_KEY); setAuthed(null); }} />;
+  if (!authed) return <Login phone={phone} onOwner={() => { localStorage.setItem(AUTH_KEY, "1"); setAuthed(true); }} />;
+  return <Index onLogout={() => { localStorage.removeItem(AUTH_KEY); setAuthed(false); }} />;
 }
 
 function getCred() {
@@ -114,7 +112,7 @@ function getCred() {
   return { user: DEFAULT_USER, pass: DEFAULT_PASS };
 }
 
-function Login({ phone, onOwner, onGuest }: { phone: string; onOwner: () => void; onGuest: () => void }) {
+function Login({ phone, onOwner }: { phone: string; onOwner: () => void }) {
   const { lang, setLang, t } = useLang();
   const [u, setU] = useState("");
   const [p, setP] = useState("");
@@ -165,13 +163,6 @@ function Login({ phone, onOwner, onGuest }: { phone: string; onOwner: () => void
         <button className="w-full rounded-lg bg-gradient-to-r from-[var(--neon-pink)] via-[var(--neon-purple)] to-[var(--neon-cyan)] text-white font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
           {t("login")}
         </button>
-        <button
-          type="button"
-          onClick={onGuest}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition"
-        >
-          <Eye className="w-4 h-4" /> {t("guest")}
-        </button>
       </form>
     </div>
   );
@@ -185,9 +176,9 @@ type Tab = "import" | "sell" | "stock" | "vu" | "receive" | "deliver" | "pending
 
 const sb = supabase as any;
 
-function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => void }) {
+function Index({ onLogout }: { onLogout: () => void }) {
   const { lang, setLang, t } = useLang();
-  const readOnly = role === "guest";
+  const readOnly = false;
   const [tab, setTab] = useState<Tab>("import");
   const [stock, setStock] = useState<StockItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -374,11 +365,6 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
             <div>
               <h1 className="text-4xl sm:text-5xl font-bold rainbow-text tracking-tight">{t("appTitle")}</h1>
               <p className="text-sm text-muted-foreground mt-2">{t("appSub")}</p>
-              {readOnly && (
-                <span className="inline-flex items-center gap-1.5 mt-3 rounded-md px-2 py-1 text-xs font-medium bg-[var(--neon-yellow)]/20 text-[var(--neon-yellow)] border border-[var(--neon-yellow)]/40">
-                  <Eye className="w-3.5 h-3.5" /> {t("guestBadge")}
-                </span>
-              )}
             </div>
             <button
               onClick={onLogout}
