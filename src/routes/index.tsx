@@ -227,6 +227,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
   // Receive
   const [rName, setRName] = useState("");
   const [rQty, setRQty] = useState("1");
+  const [rNote, setRNote] = useState("");
   const [rMsg, setRMsg] = useState<string | null>(null);
 
   // Deliver
