@@ -120,6 +120,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          note: string
           quantity: number
           status: string
         }
@@ -127,6 +128,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          note?: string
           quantity?: number
           status?: string
         }
@@ -134,6 +136,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          note?: string
           quantity?: number
           status?: string
         }

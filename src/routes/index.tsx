@@ -180,7 +180,7 @@ function Login({ phone, onOwner, onGuest }: { phone: string; onOwner: () => void
 type Owner = "shop" | "vu" | "service";
 type StockItem = { id: string; name: string; quantity: number; cost: number; owner: Owner };
 type Sale = { id: string; name: string; quantity: number; price: number; profit: number; created_at: string; owner: Owner };
-type ServiceItem = { id: string; name: string; quantity: number; status: string; created_at: string };
+type ServiceItem = { id: string; name: string; quantity: number; status: string; note: string; created_at: string };
 type Tab = "import" | "sell" | "stock" | "vu" | "receive" | "deliver" | "pending" | "sales" | "settings";
 
 const sb = supabase as any;
@@ -227,6 +227,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
   // Receive
   const [rName, setRName] = useState("");
   const [rQty, setRQty] = useState("1");
+  const [rNote, setRNote] = useState("");
   const [rMsg, setRMsg] = useState<string | null>(null);
 
   // Deliver
@@ -293,9 +294,9 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
     const name = rName.trim();
     const qty = Number(rQty);
     if (!name || !qty || qty <= 0) { setRMsg(t("fillAll")); return; }
-    const { error } = await sb.from("service_items").insert({ name, quantity: qty, status: "pending" });
+    const { error } = await sb.from("service_items").insert({ name, quantity: qty, status: "pending", note: rNote.trim() });
     if (error) { setRMsg("Lỗi: " + error.message); return; }
-    setRName(""); setRQty("1");
+    setRName(""); setRQty("1"); setRNote("");
     setRMsg(`✅ ${name} × ${qty}`);
     refresh();
   };
@@ -479,8 +480,10 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                 <form onSubmit={handleReceive} className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("itemName")}><Input value={rName} onChange={setRName} placeholder="Sửa iPhone 16" /></Field>
                   <Field label={t("qty")}><Input value={rQty} onChange={setRQty} type="number" placeholder="1" /></Field>
+                  <div className="sm:col-span-2"><Field label={t("note")}><Input value={rNote} onChange={setRNote} placeholder='VD: "Khách Nam - 0901..."' /></Field></div>
                   <div className="sm:col-span-2 flex items-center gap-3">
                     <button className="rounded-lg bg-gradient-to-r from-[var(--neon-cyan)] to-[var(--neon-purple)] text-white font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
+
                       {t("save")}
                     </button>
                     {rMsg && <span className="text-sm text-muted-foreground">{rMsg}</span>}
@@ -534,6 +537,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                           <th className="py-2 pr-4">Date</th>
                           <th className="py-2 pr-4">{t("itemName")}</th>
                           <th className="py-2 pr-4">{t("qty")}</th>
+                          <th className="py-2 pr-4">{t("note")}</th>
                           <th className="py-2 w-10"></th>
                         </tr>
                       </thead>
@@ -543,6 +547,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                             <td className="py-2.5 pr-4 text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString(lang === "vi" ? "vi-VN" : "en-US")}</td>
                             <td className="py-2.5 pr-4 font-medium">{s.name}</td>
                             <td className="py-2.5 pr-4">{Number(s.quantity)}</td>
+                            <td className="py-2.5 pr-4 text-muted-foreground">{s.note || "—"}</td>
                             <td className="py-2.5">
                               {!readOnly && (
                                 <button onClick={() => deleteService(s.id, s.name)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition">
