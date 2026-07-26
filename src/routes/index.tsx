@@ -537,6 +537,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                           <th className="py-2 pr-4">Date</th>
                           <th className="py-2 pr-4">{t("itemName")}</th>
                           <th className="py-2 pr-4">{t("qty")}</th>
+                          <th className="py-2 pr-4">{t("note")}</th>
                           <th className="py-2 w-10"></th>
                         </tr>
                       </thead>
@@ -546,6 +547,7 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                             <td className="py-2.5 pr-4 text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString(lang === "vi" ? "vi-VN" : "en-US")}</td>
                             <td className="py-2.5 pr-4 font-medium">{s.name}</td>
                             <td className="py-2.5 pr-4">{Number(s.quantity)}</td>
+                            <td className="py-2.5 pr-4 text-muted-foreground">{s.note || "—"}</td>
                             <td className="py-2.5">
                               {!readOnly && (
                                 <button onClick={() => deleteService(s.id, s.name)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition">
