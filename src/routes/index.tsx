@@ -480,8 +480,10 @@ function Index({ role, onLogout }: { role: "owner" | "guest"; onLogout: () => vo
                 <form onSubmit={handleReceive} className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("itemName")}><Input value={rName} onChange={setRName} placeholder="Sửa iPhone 16" /></Field>
                   <Field label={t("qty")}><Input value={rQty} onChange={setRQty} type="number" placeholder="1" /></Field>
+                  <div className="sm:col-span-2"><Field label={t("note")}><Input value={rNote} onChange={setRNote} placeholder='VD: "Khách Nam - 0901..."' /></Field></div>
                   <div className="sm:col-span-2 flex items-center gap-3">
                     <button className="rounded-lg bg-gradient-to-r from-[var(--neon-cyan)] to-[var(--neon-purple)] text-white font-semibold px-5 py-2.5 text-sm hover:opacity-90 transition">
+
                       {t("save")}
                     </button>
                     {rMsg && <span className="text-sm text-muted-foreground">{rMsg}</span>}
