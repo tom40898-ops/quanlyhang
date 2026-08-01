@@ -60,8 +60,8 @@ const DICT: Record<string, { vi: string; en: string }> = {
   itemName: { vi: "Tên hàng", en: "Item name" },
   orderName: { vi: "Tên đơn", en: "Order name" },
   qty: { vi: "Số lượng", en: "Quantity" },
-  cost: { vi: "Số tiền vốn / đơn vị", en: "Unit cost" },
-  price: { vi: "Giá bán / đơn vị", en: "Unit price" },
+  cost: { vi: "Số tiền vốn / đơn vị (nghìn, VD 10 = 10.000)", en: "Unit cost (thousands, e.g. 10 = 10,000)" },
+  price: { vi: "Giá bán / đơn vị (nghìn, VD 10 = 10.000)", en: "Unit price (thousands, e.g. 10 = 10,000)" },
   note: { vi: "Ghi chú", en: "Note" },
   noteVu: { vi: "Ghi chú (có chữ \"Vũ\" → vào cả kho Vũ)", en: "Note (contains \"Vũ\" → also Vũ's stock)" },
   save: { vi: "Lưu nhập hàng", en: "Save import" },
@@ -289,7 +289,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     e.preventDefault();
     const name = iName.trim();
     const qty = Number(iQty);
-    const cost = Number(iCost);
+    const cost = money(iCost);
     if (!name || !qty || qty <= 0 || cost < 0) { setIMsg(t("fillAll")); return; }
     const alsoVu = /vũ|vu\b/i.test(iNote);
     const finalName = await addToStock(stock, name, qty, cost, "shop");
@@ -303,7 +303,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     e.preventDefault();
     const name = viName.trim();
     const qty = Number(viQty);
-    const cost = Number(viCost);
+    const cost = money(viCost);
     if (!name || !qty || qty <= 0 || cost < 0) { setViMsg(t("fillAll")); return; }
     const finalName = await addToStock(stock, name, qty, cost, "vu");
     await addToStock(stock, name, qty, cost, "shop");
@@ -323,7 +323,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     e.preventDefault();
     const name = sName.trim();
     const qty = Number(sQty);
-    const price = Number(sPrice);
+    const price = money(sPrice);
     if (!name || !qty || qty <= 0 || price < 0) { setSMsg(t("fillAll")); return; }
     const item = stock.find(x => x.owner === "shop" && x.name.toLowerCase() === name.toLowerCase());
     if (!item || Number(item.quantity) < qty) { setSMsg(lang === "vi" ? "❌ Không có hoặc không đủ số lượng trong kho tiệm" : "❌ Not in shop stock or insufficient"); return; }
@@ -341,7 +341,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     e.preventDefault();
     const name = vsName.trim();
     const qty = Number(vsQty);
-    const price = Number(vsPrice);
+    const price = money(vsPrice);
     if (!name || !qty || qty <= 0 || price < 0) { setVsMsg(t("fillAll")); return; }
     const item =
       stock.find(x => x.owner === "vu" && x.name.toLowerCase() === name.toLowerCase()) ??
@@ -381,7 +381,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     e.preventDefault();
     const name = dName.trim();
     const qty = Number(dQty);
-    const price = Number(dPrice);
+    const price = money(dPrice);
     if (!name || !qty || qty <= 0 || !price || price < 0) { setDMsg(t("fillAll")); return; }
     const profit = price * qty;
     const { error } = await sb.from("sales").insert([
@@ -644,7 +644,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
                       <Field label={t("price")}><Input value={dPrice} onChange={setDPrice} type="number" placeholder="0" /></Field>
                       <Field label={t("totalProfit")}>
                         <div className="w-full rounded-lg border border-input bg-input/50 px-3 py-2 text-sm text-muted-foreground">
-                          {formatVND(Number(dPrice || 0) * Number(dQty || 0))}
+                          {formatVND(money(dPrice) * Number(dQty || 0))}
                         </div>
                       </Field>
                       <div className="sm:col-span-2 flex items-center gap-3">
@@ -1099,6 +1099,10 @@ function Input({ value, onChange, type = "text", placeholder, list }: { value: s
 
 function PasswordInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return <input type="password" value={value} onChange={e => onChange(e.target.value)} className="w-full rounded-lg border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />;
+}
+
+function money(v: string) {
+  return Number(v || 0) * 1000;
 }
 
 function formatVND(n: number) {
