@@ -240,7 +240,14 @@ function Index({ onLogout }: { onLogout: () => void }) {
           changed = true;
         }
       }
-      if (changed) { await refresh(1); return; }
+      if (changed) {
+        const again = await sb.from("stock_items").select("*").order("name");
+        setStock((again.data ?? []) as StockItem[]);
+        if (sa.data) setSales(sa.data as Sale[]);
+        if (sv.data) setServices(sv.data as ServiceItem[]);
+        setLoading(false);
+        return;
+      }
     }
     setStock(list);
     if (sa.data) setSales(sa.data as Sale[]);
