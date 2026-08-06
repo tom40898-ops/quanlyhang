@@ -355,9 +355,8 @@ function Index({ onLogout }: { onLogout: () => void }) {
       profit = (price - Number(item.cost)) * qty;
       finalName = item.name;
       await consume(item, qty);
-      const twin = twinOf(item);
-      if (twin) await consume(twin, Math.min(qty, Number(twin.quantity)));
     }
+
     const { error } = await sb.from("sales").insert([
       { name: finalName, quantity: qty, price, profit, owner: "vu" },
       { name: finalName, quantity: qty, price, profit, owner: "shop" },
