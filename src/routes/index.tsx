@@ -285,6 +285,29 @@ function Index({ onLogout }: { onLogout: () => void }) {
     return finalName;
   };
 
+  /** Find the shop twin of a Vũ item (same base name + same cost). */
+  const shopTwin = (list: StockItem[], item: StockItem) =>
+    list.find(x => x.owner === "shop"
+      && baseName(x.name).toLowerCase() === baseName(item.name).toLowerCase()
+      && Number(x.cost) === Number(item.cost));
+
+  /** RULE: every item in Vũ's stock must also exist in the shop stock (qty >= Vũ's qty). */
+  const syncVuToShop = async (list: StockItem[]) => {
+    let changed = false;
+    for (const v of list.filter(x => x.owner === "vu")) {
+      const twin = shopTwin(list, v);
+      if (!twin) {
+        await sb.from("stock_items").insert({ name: v.name, quantity: v.quantity, cost: v.cost, owner: "shop" });
+        changed = true;
+      } else if (Number(twin.quantity) < Number(v.quantity)) {
+        await sb.from("stock_items").update({ quantity: Number(v.quantity), updated_at: new Date().toISOString() }).eq("id", twin.id);
+        changed = true;
+      }
+    }
+    return changed;
+  };
+
+
   const handleShopImport = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = iName.trim();
