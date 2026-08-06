@@ -218,7 +218,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
   const [search, setSearch] = useState("");
   const [vuSearch, setVuSearch] = useState("");
 
-  const refresh = useCallback(async (depth = 0) => {
+  const refresh = useCallback(async () => {
     const [s, sa, sv] = await Promise.all([
       sb.from("stock_items").select("*").order("name"),
       sb.from("sales").select("*").order("created_at", { ascending: false }),
@@ -420,7 +420,7 @@ function Index({ onLogout }: { onLogout: () => void }) {
     refresh();
   };
 
-  const shopStock = useMemo(() => stock.filter(x => x.owner === "shop"), [stock]);
+  const shopStock = useMemo(() => stock.filter(x => x.owner !== "service"), [stock]);
   const vuStock = useMemo(() => stock.filter(x => x.owner === "vu"), [stock]);
   const allStock = useMemo(() => stock.filter(x => x.owner !== "service"), [stock]);
   const filteredAllStock = useMemo(() => allStock.filter(x => x.name.toLowerCase().includes(search.toLowerCase())), [allStock, search]);
