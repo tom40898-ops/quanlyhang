@@ -218,17 +218,36 @@ function Index({ onLogout }: { onLogout: () => void }) {
   const [search, setSearch] = useState("");
   const [vuSearch, setVuSearch] = useState("");
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (depth = 0) => {
     const [s, sa, sv] = await Promise.all([
       sb.from("stock_items").select("*").order("name"),
       sb.from("sales").select("*").order("created_at", { ascending: false }),
       sb.from("service_items").select("*").eq("status", "pending").order("created_at", { ascending: false }),
     ]);
-    if (s.data) setStock(s.data as StockItem[]);
+    const list = (s.data ?? []) as StockItem[];
+    // RULE: every Vũ item must also exist in the shop stock
+    if (depth === 0) {
+      let changed = false;
+      for (const v of list.filter(x => x.owner === "vu")) {
+        const twin = list.find(x => x.owner === "shop"
+          && baseName(x.name).toLowerCase() === baseName(v.name).toLowerCase()
+          && Number(x.cost) === Number(v.cost));
+        if (!twin) {
+          await sb.from("stock_items").insert({ name: v.name, quantity: v.quantity, cost: v.cost, owner: "shop" });
+          changed = true;
+        } else if (Number(twin.quantity) < Number(v.quantity)) {
+          await sb.from("stock_items").update({ quantity: Number(v.quantity), updated_at: new Date().toISOString() }).eq("id", twin.id);
+          changed = true;
+        }
+      }
+      if (changed) { await refresh(1); return; }
+    }
+    setStock(list);
     if (sa.data) setSales(sa.data as Sale[]);
     if (sv.data) setServices(sv.data as ServiceItem[]);
     setLoading(false);
   }, []);
+
 
   useEffect(() => { refresh(); }, [refresh]);
 
