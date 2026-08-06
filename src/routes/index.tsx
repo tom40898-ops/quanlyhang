@@ -361,6 +361,12 @@ function Index({ onLogout }: { onLogout: () => void }) {
     refresh();
   };
 
+  /** Twin in the other stock (same base name + cost). */
+  const twinOf = (item: StockItem) => stock.find(x =>
+    x.owner === (item.owner === "vu" ? "shop" : "vu")
+    && baseName(x.name).toLowerCase() === baseName(item.name).toLowerCase()
+    && Number(x.cost) === Number(item.cost));
+
   const consume = async (item: StockItem, qty: number) => {
     const remain = Number(item.quantity) - qty;
     if (remain <= 0) await sb.from("stock_items").delete().eq("id", item.id);
@@ -378,6 +384,8 @@ function Index({ onLogout }: { onLogout: () => void }) {
     if (!item || Number(item.quantity) < qty) { setSMsg(lang === "vi" ? "❌ Không có hoặc không đủ số lượng trong kho tiệm" : "❌ Not in shop stock or insufficient"); return; }
     const profit = (price - Number(item.cost)) * qty;
     await consume(item, qty);
+    const twin = twinOf(item);
+    if (twin) await consume(twin, Math.min(qty, Number(twin.quantity)));
     const { error } = await sb.from("sales").insert({ name: item.name, quantity: qty, price, profit, owner: "shop" });
     if (error) { setSMsg("Lỗi: " + error.message); return; }
     setSName(""); setSQty(""); setSPrice("");
@@ -402,6 +410,8 @@ function Index({ onLogout }: { onLogout: () => void }) {
       profit = (price - Number(item.cost)) * qty;
       finalName = item.name;
       await consume(item, qty);
+      const twin = twinOf(item);
+      if (twin) await consume(twin, Math.min(qty, Number(twin.quantity)));
     }
     const { error } = await sb.from("sales").insert([
       { name: finalName, quantity: qty, price, profit, owner: "vu" },
